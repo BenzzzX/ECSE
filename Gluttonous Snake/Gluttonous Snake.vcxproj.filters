@@ -1,0 +1,131 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="头文件\ECS">
+      <UniqueIdentifier>{5be638eb-ea03-4892-b393-478dc4390a6c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\MPL">
+      <UniqueIdentifier>{b52736e1-c96c-46e5-9018-e3c25ea90cc0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\EntityPlus">
+      <UniqueIdentifier>{e6b1a16a-baa3-4863-94c4-2c254204aaa4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Concat.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\ContainsAll.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Count.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Filter.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\IndexOf.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Interface.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\MetaFor.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\MPL.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Rename.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Repeat.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\StrongTypedef.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Tests.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Type.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\TypeList.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\TypeListOps.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Unique.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="ECS\eecs.hpp">
+      <Filter>头文件\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityPlus\container.h">
+      <Filter>头文件\EntityPlus</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityPlus\entity.h">
+      <Filter>头文件\EntityPlus</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityPlus\event.h">
+      <Filter>头文件\EntityPlus</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityPlus\exception.h">
+      <Filter>头文件\EntityPlus</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityPlus\metafunctions.h">
+      <Filter>头文件\EntityPlus</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityPlus\typelist.h">
+      <Filter>头文件\EntityPlus</Filter>
+    </ClInclude>
+    <ClInclude Include="Components.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MPL\Map.hpp">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="benchmark.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Data.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Gluttonous Snake.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="EntityPlus\entity.impl.hpp">
+      <Filter>头文件\EntityPlus</Filter>
+    </None>
+    <None Include="EntityPlus\event.impl.hpp">
+      <Filter>头文件\EntityPlus</Filter>
+    </None>
+  </ItemGroup>
+</Project>
