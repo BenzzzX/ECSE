@@ -114,12 +114,18 @@
     <ClInclude Include="ECS\Serializer.h">
       <Filter>头文件\ECS</Filter>
     </ClInclude>
+    <ClInclude Include="GeneralData.h">
+      <Filter>头文件\MPL</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralCode.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Gluttonous Snake.cpp">
+    <ClCompile Include="Code.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

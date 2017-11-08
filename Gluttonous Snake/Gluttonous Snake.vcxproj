@@ -24,6 +24,7 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>GluttonousSnake</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <ProjectName>ECSE</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -158,6 +159,8 @@
     <ClInclude Include="EntityPlus\typelist.h" />
     <ClInclude Include="Components.h" />
     <ClInclude Include="Data.h" />
+    <ClInclude Include="GeneralCode.h" />
+    <ClInclude Include="GeneralData.h" />
     <ClInclude Include="MPL\Concat.hpp" />
     <ClInclude Include="MPL\ContainsAll.hpp" />
     <ClInclude Include="MPL\Count.hpp" />
@@ -179,7 +182,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Gluttonous Snake.cpp" />
+    <ClCompile Include="Code.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
