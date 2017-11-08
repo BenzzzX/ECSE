@@ -37,10 +37,6 @@ struct CFoodSpawner
 	size_t holdrand;
 };
 
-using Components = eecs::ComponentList
-<
-	CPosition, CVelocity, CAppearance, CCollision, CLifeTime, CSnake, CInput, CFoodSpawner
->;
 
 
 using BYTE = unsigned char;
@@ -75,11 +71,6 @@ struct KeyEvent
 	char key;
 	bool isDown;
 };
-
-using Events = eecs::EventList
-<
-	TickEvent, CollisionEvent, KeyEvent, RewindEvent, CacheEvent
->;
 
 
 
@@ -149,7 +140,6 @@ public:
 /*场景信息，用于碰撞检测*/
 class SceneData
 {
-
 	using EntityID = size_t;
 
 	std::vector<std::vector<EntityID>> content;
@@ -176,20 +166,59 @@ public:
 		content.resize(width*height);
 	}
 };
+
+
+
+struct CUniqueID
+{
+	GUID uid;
+};
+
+namespace std
+{
+	template<> struct hash<GUID>
+	{
+		size_t operator()(const GUID& guid) const noexcept
+		{
+			static_assert(sizeof(_GUID) == 128 / CHAR_BIT, "GUID");
+			const std::uint64_t* p = reinterpret_cast<const std::uint64_t*>(&guid);
+			std::hash<std::uint64_t> hash;
+			return hash(p[0]) ^ hash(p[1]);
+		}
+	};
+}
+
+struct UniqueMap
+{
+	std::unordered_map<GUID, size_t> map;
+#ifdef NDEBUG
+#else
+	bool enabled = false;
+#endif
+};
+
+
+using Components = eecs::ComponentList
+<
+	CPosition, CVelocity, CAppearance, CCollision, CLifeTime, CSnake, CInput, CFoodSpawner, CUniqueID
+>;
 using Tags = eecs::TagList //定义标记
 <
 	struct TPlayer, struct TFood, struct TSnakeBody, struct TFood
 >;
+using Events = eecs::EventList
+<
+	TickEvent, CollisionEvent, KeyEvent, RewindEvent, CacheEvent
+>;
 using Singletons = eecs::SingletonList //定义世界单例
 <
-	SceneData, Cache
+	SceneData, Cache, UniqueMap
 >;
 
 using World = eecs::World //定义世界
 <
 	Components, Tags, Events, Singletons
 >;
-
 
 template<typename ...Ts>
 using EntityTemplate = World::EntityTemplate<Ts...>;
@@ -207,6 +236,6 @@ auto snakeTemplate = World::make_template<TPlayer>
 auto foodTemplate = World::make_template<TFood>
 (
 	CPosition{ 0,0 },
-	CAppearance{'@'},
-	CCollision{Overlap}
+	CAppearance{ '@' },
+	CCollision{ Overlap }
 );

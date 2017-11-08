@@ -111,6 +111,9 @@
     <ClInclude Include="Data.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ECS\Serializer.h">
+      <Filter>头文件\ECS</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

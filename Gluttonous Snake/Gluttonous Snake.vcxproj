@@ -51,6 +51,7 @@
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -148,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="benchmark.h" />
     <ClInclude Include="ECS\eecs.hpp" />
+    <ClInclude Include="ECS\Serializer.h" />
     <ClInclude Include="EntityPlus\container.h" />
     <ClInclude Include="EntityPlus\entity.h" />
     <ClInclude Include="EntityPlus\event.h" />

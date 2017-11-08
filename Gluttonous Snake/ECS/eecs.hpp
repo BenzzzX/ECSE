@@ -17,33 +17,49 @@
 #include <cstring>
 
 #include "../MPL/MPL.hpp"
-#include <Windows.h>
 
-namespace std 
-{
-	template<> struct hash<GUID>
-	{
-		size_t operator()(const GUID& guid) const noexcept
-		{
-			static_assert(sizeof(_GUID) == 128 / CHAR_BIT, "GUID");
-			const std::uint64_t* p = reinterpret_cast<const std::uint64_t*>(&guid);
-			std::hash<std::uint64_t> hash;
-			return hash(p[0]) ^ hash(p[1]);
-		}
-	};
-}
 
 namespace eecs {
 
 	typedef std::size_t DataIndex;
 	using BYTE = unsigned char;
 
-	struct EntityID
+#if 0
+	template <typename TConfig>
+	struct FrameData
 	{
-		bool serialized = false;
-		size_t physicalID;
-		GUID uniqueID;
+		size_t frame;
+		size_t entityNum;
+		struct
+		{
+			GUID uid;
+			EntityData<TConfig> entityData;
+		} data[0];
 	};
+
+	template <typename TConfig>
+	struct EntityData
+	{
+		TConfig::Bitset bitset;
+		BYTE data[0];
+	};
+#endif
+	struct EntityCreatingEvent
+	{
+		size_t id;
+	};
+
+	struct EntityDyingEvent
+	{
+		size_t id;
+	};
+
+	using MetaEvents = MPL::TypeList
+		<
+		EntityCreatingEvent, EntityDyingEvent
+		>;
+	template <typename... Ts>
+	using EventList = MPL::Concat<MetaEvents, MPL::TypeList<Ts...>>;
 
 	typedef std::size_t EventHandle;
 
@@ -55,14 +71,6 @@ namespace eecs {
 
     template <typename... Ts>
     using TagList = MPL::TypeList<Ts...>;
-
-	using MetaEvents = MPL::TypeList
-	<
-		//EntityCreationEvent,EntityDyingEvent
-	>;
-
-	template <typename... Ts>
-	using EventList = MPL::Concat<MetaEvents, MPL::TypeList<Ts...>>;
 
 	template <typename... Ts>
 	using SingletonList = MPL::TypeList<Ts...>;
@@ -78,7 +86,6 @@ namespace eecs {
 
 			DataIndex dataIndex;
 			Bitset bitset;
-			bool fresh;
 			bool alive;
 		};
 
@@ -217,16 +224,18 @@ namespace eecs {
 			}
 		};
 
-		template <typename TConfig>
-		class EntityManager 
+
+		
+
+		template <typename TConfig,typename TEventList>
+		class EntityManager : public EventManager<TEventList> 
 		{
+		public:
+			using ThisType = EntityManager<TConfig, TEventList>;
 			using Config = TConfig;
-			using ThisType = EntityManager<Config>;
 			using Bitset = typename Config::Bitset;
 			using Entity = Impl::Entity<Config>;
 			using ComponentStorage = Impl::ComponentStorage<Config>;
-		public:
-
 			template<typename ...Ts>
 			class EntityTemplate
 			{
@@ -266,21 +275,40 @@ namespace eecs {
 			{
 				Entity& e;
 				EntityManager& manager;
+				Bitset prebitset;
 				bool valid = true;
-				EntityProxy(size_t id, EntityManager& m) :e(m.entities[id]), manager(m) {}
+				EntityProxy(size_t id, EntityManager& m) :e(m.entities[id]), manager(m), prebitset(e.bitset) { valid = get().alive; }
 				friend EntityManager;
 				inline auto& get() { assert(valid); return e; }
 				inline auto& get() const { assert(valid); return e; }
 			public:
-				~EntityProxy() { valid = false; }
+				~EntityProxy() 
+				{ 
+					manager.update_groups(e, prebitset);
+					valid = false; 
+				}
 				EntityProxy(EntityProxy&) = delete;
 				EntityProxy() = delete;
 				EntityProxy(EntityProxy&&) = delete;
 				EntityProxy& operator = (const EntityProxy&) = delete;
 
+				auto& move(EntityProxy& other)
+				{
+					std::swap(get().bitset, other.get().bitset);
+					std::swap(get().dataIndex, other.get().dataIndex);
+					other.get().alive = false;
+					other.valid = false;
+					return *this;
+				}
+
 				auto is_alive() const noexcept { return get().alive; }
 
-				void kill() noexcept { get().alive = false; valid = false; }
+				void kill() noexcept 
+				{ 
+					manager.broadcast(EntityDyingEvent{ get().localID });
+					get().alive = false; 
+					valid = false; 
+				}
 
 				template <typename T>
 				auto has_tag() const noexcept {
@@ -336,38 +364,14 @@ namespace eecs {
 					return *this;
 				}
 
-				auto& save(BYTE* &data) const noexcept
-				{
-					manager.save_entity_impl(get(), data);
-					return *this;
-				}
-
-				auto& serialize(BYTE* &data) const noexcept
-				{
-					manager.serialize_entity_impl(get(), data);
-					return *this;
-				}
-
-				auto& restore(BYTE* &data)
-				{
-					manager.restore_entity_impl(get(), data);
-					return *this;
-				}
-
-				inline size_t get_size() const noexcept
-				{
-					return manager.get_entity_size_impl(get());
-				}
-
 				inline size_t get_local_id() const noexcept
 				{
 					return get().localID;
 				}
 
-				auto& duplicate(EntityProxy& other)
+				inline const auto& get_bitset() const noexcept
 				{
-					manager.duplicate_entity_impl(get(), other.get());
-					return *this;
+					return get().bitset;
 				}
 
 				template<typename ...Ts>
@@ -404,7 +408,9 @@ namespace eecs {
 
 			size_t new_entity()
 			{
-				return create_entity_impl();
+				size_t id = create_entity_impl();
+				broadcast(EntityCreatingEvent{ id });
+				return id;
 			}
 
 			void apply_changes() noexcept {
@@ -488,7 +494,7 @@ namespace eecs {
 					{
 						for (size_t i = 0; i < size; i++)
 						{
-							size_t id = localMap[group[i]].physicalID;
+							size_t id = localMap[group[i]];
 							Entity& e = entities[i];
 							ExactComponentHelper::call(EntityProxy{ id, *this }, mFunction);
 						}
@@ -497,7 +503,7 @@ namespace eecs {
 					{
 						for (size_t i = 0; i < size; i++)
 						{
-							size_t id = localMap[group[i]].physicalID;
+							size_t id = localMap[group[i]];
 							Entity& e = entities[i];
 							if (Config::SignatureBitsets::match<T>(e.bitset))
 								ExactComponentHelper::call(EntityProxy{ id, *this }, mFunction);
@@ -516,7 +522,9 @@ namespace eecs {
 				}
 				for (size_t i = 0; i < size; ++i)
 				{
-					entities[i].alive = false;
+					auto& e = entities[i];
+					broadcast(EntityDyingEvent{ e.localID });
+					e.alive = false;
 				}
 				size = sizeNext = 0;
 			}
@@ -524,27 +532,16 @@ namespace eecs {
 			template<typename F>
 			void for_local(size_t id, F&& f)
 			{
-				size_t i = localMap[id].physicalID;
+				size_t i = localMap[id];
 				f(EntityProxy{ i,*this });
-			}
-
-			void serialize(size_t id, BYTE* &data)
-			{
-				serialize_entity_impl(entities[localMap[id].physicalID], data);
-			}
-
-			size_t unserialize(BYTE* &data)
-			{
-				return unserialize_entity_impl(data);
 			}
 		private:
 
 			std::size_t capacity{ 0 }, size{ 0 }, sizeNext{ 0 }, groupsize{ 0 };
 			std::vector<Entity> entities;
 			ComponentStorage components;
-			std::vector<EntityID> localMap;
+			std::vector<size_t> localMap;
 			std::vector<std::pair<Bitset, std::vector<size_t>>> groups;
-			std::unordered_map<GUID, size_t> uniqueMap;
 
 
 			auto create_entity_impl() {
@@ -557,7 +554,6 @@ namespace eecs {
 				assert(!e.alive);
 				e.alive = true;
 				e.bitset.reset();
-				e.fresh = true;
 				return e.localID;
 			}
 
@@ -575,8 +571,7 @@ namespace eecs {
 					e.bitset.reset();
 					e.alive = false;
 					e.localID = i;
-					e.fresh = false;
-					localMap[i].physicalID = i;
+					localMap[i] = i;
 				}
 
 				capacity = mNewCapacity;
@@ -601,108 +596,6 @@ namespace eecs {
 				static constexpr size_t sizes[] = { sizeof(Ts) ... };
 			};
 
-			inline size_t get_entity_size_impl(const Entity& e)
-			{
-				size_t total = 0;
-				const auto& bitset = e.bitset;
-				using ComponentSize = MPL::Rename<TypeSize, Config::ComponentList>;
-				for (size_t i = 0; i < MPL::size<Config::ComponentList>(); i++)
-				{
-					total += bitset[i] * ComponentSize::sizes[i];
-				}
-				return total + sizeof(Bitset);
-			}
-
-			inline void save_entity_impl(const Entity& e, BYTE* &data)
-			{
-				const auto& bitset = e.bitset;
-				memcpy(data, &e.bitset, sizeof(Bitset));
-				data += sizeof(Bitset);
-				MPL::forTypes<Config::ComponentList>([&](auto v)
-				{
-					using t = typename decltype(v)::type;
-					constexpr auto id = Config::metaBit<t>();
-					if (bitset[id])
-					{
-						const t& c = components.get_component<t>(e.dataIndex);
-						memcpy(data, &c, sizeof(t));
-						data += sizeof(t);
-					}
-				});
-			}
-
-			inline void serialize_entity_impl(const Entity& e, BYTE* &data)
-			{
-				auto& id = localMap[e.localID];
-				if (!id.serialized)
-				{
-					id.serialized = true;
-					CoCreateGuid(&id.uniqueID);
-					uniqueMap.insert(std::make_pair(id.uniqueID, e.localID));
-				}
-				memcpy(data, &id.uniqueID, sizeof(GUID));
-				data += sizeof(GUID);
-				save_entity_impl(e, data);
-			}
-
-			inline size_t unserialize_entity_impl(BYTE* &data)
-			{
-				GUID uniqueID;
-				memcpy(&uniqueID, data, sizeof(GUID));
-				data += sizeof(GUID);
-				if (uniqueMap.find(uniqueID) == uniqueMap.end())
-				{
-					auto localID = create_entity_impl();
-					auto& e = entities[localID];
-					auto& id = localMap[localID];
-					id.serialized = true;
-					id.uniqueID = uniqueID;
-					restore_entity_impl(e, data);
-					return e.localID;
-				}
-				else
-				{
-					auto& e = entities[localMap[uniqueMap[uniqueID]].physicalID];
-					restore_entity_impl(e, data);
-					return e.localID;
-				}
-			}
-
-			void restore_entity_impl(Entity& e, BYTE* &data)
-			{
-				auto& bitset = e.bitset;
-				memcpy(&bitset, data, sizeof(Bitset));
-				data += sizeof(Bitset);
-				MPL::forTypes<Config::ComponentList>([&](auto v)
-				{
-					using t = typename decltype(v)::type;
-					constexpr auto id = Config::metaBit<t>();
-					if (bitset[id])
-					{
-						t& c = components.get_component<t>(e.dataIndex);
-						memcpy(&c, data, sizeof(t));
-						data += sizeof(t);
-					}
-				});
-			}
-
-			void duplicate_entity_impl(Entity& e, Entity& s)
-			{
-				auto& bitset = e.bitset;
-				bitset = s.bitset;
-				MPL::forTypes<Config::ComponentList>([&](auto v)
-				{
-					using t = typename decltype(v)::type;
-					constexpr auto id = Config::metaBit<t>();
-					if (bitset[id])
-					{
-						t& ec = components.get_component<t>(e.dataIndex);
-						t& sc = components.get_component<t>(s.dataIndex);
-						ec = sc;
-					}
-				});
-			}
-
 			template<typename T>
 			inline auto get_smallest_group()
 			{
@@ -723,37 +616,34 @@ namespace eecs {
 				return id;
 			}
 
-			inline void update_group(size_t groupID)
+			inline void update_groups(const Entity& e,const Bitset& prebitset)
 			{
-				auto& bitset = groups[groupID].first;
-				auto& group = groups[groupID].second;
-				for (int i = 0; i < size; i++)
+				if (e.alive)
 				{
-					auto& e = entities[i];
-					auto isFresh = e.fresh;
-					auto isEnteringGroup = ((bitset&e.bitset) == bitset);
-			
-					if (isFresh && isEnteringGroup)
+					if (prebitset == e.bitset) return;
+					for (size_t i = 0; i < groupsize; i++)
 					{
-						group.push_back(e.localID);
+						auto& bitset = groups[i].first;
+						auto& group = groups[i].second;
+						auto isEnteringGroup = ((bitset&e.bitset) == bitset);
+						auto isInGroup = ((bitset&prebitset) == bitset);
+						if (!isInGroup && isEnteringGroup)
+						{
+							group.push_back(e.localID);
+						}
 					}
-					
 				}
-			}
-
-			inline void fresh_group(size_t groupID)
-			{
-				auto& bitset = groups[groupID].first;
-				auto& group = groups[groupID].second;
-				for (int i = 0; i < size; i++)
+				else
 				{
-					auto& e = entities[i];
-					auto isLeavingGroup = !e.alive;
-					auto isFresh = e.fresh;
-					auto isInGroup = ((bitset&e.bitset) == bitset) && !isFresh;
-					if (isInGroup && isLeavingGroup)
+					for (size_t i = 0; i < groupsize; i++)
 					{
-						group.erase(std::find(group.begin(), group.end(), e.localID));
+						auto& bitset = groups[i].first;
+						auto& group = groups[i].second;
+						auto isLeavingGroup = ((bitset&prebitset) == bitset);
+						if (isLeavingGroup)
+						{
+							group.erase(std::find(group.begin(), group.end(), e.localID));
+						}
 					}
 				}
 			}
@@ -761,14 +651,6 @@ namespace eecs {
 			void refresh() noexcept {
 
 				size_t iD{ 0 }, iA{ sizeNext - 1 };
-				groupsize = groups.size();
-
-				/*remove dying entities from groups*/
-				for (int i = 0; i < groupsize; i++)
-				{
-					fresh_group(i);
-				}
-
 				/*
 				collect living entities together
 				*/
@@ -796,18 +678,6 @@ namespace eecs {
 				}
 				complete:
 				size = sizeNext = iD;
-
-				/*add fresh entities to groups*/
-				for (int i = 0; i < groupsize; i++)
-				{
-					update_group(i);
-				}
-
-				for (int i = 0; i < size; i++)
-				{
-					auto& e = entities[i];
-					e.fresh = false;;
-				}
 			}
 		};
 
@@ -841,26 +711,39 @@ namespace eecs {
 			}
 		};
 
-		template <typename TConfig>
-		size_t EntityManager<TConfig>::FMCounter = 0;
+		template <typename TConfig,typename TEventList>
+		size_t EntityManager<TConfig, TEventList>::FMCounter = 0;
 	}
+
+	template<typename T,typename TWorld>
+	class System
+	{
+		struct vtable { virtual ~vtable() {} };
+	protected:
+		TWorld &world;
+	public:
+		System() : world(*TWorld::pWorld)
+		{
+			static_assert(sizeof(T) == sizeof(System) + (std::has_virtual_destructor_v<T> ? sizeof(vtable) : 0u), "System should not have any data");
+		}
+	};
 
 	template <typename TComponentList, typename TTagList, typename TEventList, typename TSingletonList>
 	class World : 
 		public Impl::EntityManager
 		<
-			Impl::Config<TComponentList,TTagList>
-		>,
-		public Impl::EventManager<TEventList>
+			Impl::Config<TComponentList,TTagList>,
+			TEventList
+		>
 	{
 		MPL::Rename<std::tuple, typename TSingletonList> singletons;
 		using EntityManager = Impl::EntityManager
 		<
-			Impl::Config<TComponentList, TTagList>
+			Impl::Config<TComponentList, TTagList>,
+			TEventList
 		>;
-
-		static World *pWorld;
 	public:
+		static World *pWorld;
 		using EntityProxy = EntityManager::EntityProxy;
 		template<typename T>
 		auto& getSingleton()
@@ -869,18 +752,7 @@ namespace eecs {
 		}
 
 		World() { pWorld = this; }
-
-		template<typename T>
-		struct System
-		{
-			World &world;
-			struct vtable { virtual ~vtable() {} };
-			System() : world(*pWorld)
-			{
-				
-				static_assert(sizeof(T) == sizeof(System) + (std::has_virtual_destructor_v<T> ? sizeof(vtable) : 0u), "System should not have any data");
-			}
-		};
+		~World() { pWorld = nullptr; }
 	};
 
 	template<typename C,typename T,typename E,typename S>
