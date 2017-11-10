@@ -4,7 +4,6 @@
 #undef max
 #include "benchmark.h"
 #include "Data.h"
-#include "GeneralCode.h"
 
 static constexpr auto height = 14, width = 24;
 
@@ -211,7 +210,6 @@ void serialize_test() {
 			<< proxy.template get_component<CAppearance>().v << "\n";
 		auto unwrappedref = ImpureUtil::unwrap_ref(world, wrappedref);
 		std::cout << "unserialized reference to entity :" << std::get<0>(unwrappedref) << '\n';
-
 	});
 }
 

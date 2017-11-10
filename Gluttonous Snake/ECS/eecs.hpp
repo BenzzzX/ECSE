@@ -18,10 +18,11 @@
 #pragma clang diagnostic ignored "-Wmicrosoft-template"
 #include "../MPL/MPL.hpp"
 
+#define Property(exp) static constexpr auto exp
 
 namespace eecs {
 	
-
+	
 	typedef std::size_t DataIndex;
 	using BYTE = unsigned char;
 

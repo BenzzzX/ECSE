@@ -1,5 +1,10 @@
 #pragma once
-#include "GeneralData.h"
+#include "UtilSystem.h"
+#include "Serialize.h"
+#include "Cache.h"
+#include "Render.h"
+#include "Input.h"
+#include "Tick.h"
 
 struct CInput {
   char v;

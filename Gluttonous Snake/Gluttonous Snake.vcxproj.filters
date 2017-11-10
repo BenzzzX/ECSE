@@ -108,13 +108,25 @@
     <ClInclude Include="Data.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="GeneralCode.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="to_tuple.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="GeneralData.h">
+    <ClInclude Include="Serialize.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Cache.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Render.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Input.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Tick.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="UtilSystem.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
