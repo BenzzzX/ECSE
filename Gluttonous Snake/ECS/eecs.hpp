@@ -15,11 +15,12 @@
 #include <climits>
 #include <cstdint>
 #include <cstring>
-
+#pragma clang diagnostic ignored "-Wmicrosoft-template"
 #include "../MPL/MPL.hpp"
 
 
 namespace eecs {
+	
 
 	typedef std::size_t DataIndex;
 	using BYTE = unsigned char;
@@ -54,9 +55,19 @@ namespace eecs {
 		size_t id;
 	};
 
+	
+	struct EntityUpdateEvent
+	{
+		size_t id;
+		size_t component;
+		enum {
+			change,erase,add
+		}type;
+	};
+
 	using MetaEvents = MPL::TypeList
 		<
-		EntityCreatingEvent, EntityDyingEvent
+		EntityCreatingEvent, EntityDyingEvent, EntityUpdateEvent
 		>;
 	template <typename... Ts>
 	using EventList = MPL::Concat<MetaEvents, MPL::TypeList<Ts...>>;
@@ -224,9 +235,6 @@ namespace eecs {
 			}
 		};
 
-
-		
-
 		template <typename TConfig,typename TEventList>
 		class EntityManager : public EventManager<TEventList> 
 		{
@@ -275,31 +283,50 @@ namespace eecs {
 			{
 				Entity& e;
 				EntityManager& manager;
-				Bitset prebitset;
+#if NDEBUG
+#else
 				bool valid = true;
-				EntityProxy(size_t id, EntityManager& m) :e(m.entities[id]), manager(m), prebitset(e.bitset) { valid = get().alive; }
+#endif
+				EntityProxy(size_t id, EntityManager& m) :e(m.entities[id]), manager(m)
+				{ 
+#if NDEBUG
+#else
+					valid = get().alive;
+#endif
+				}
 				friend EntityManager;
 				inline auto& get() { assert(valid); return e; }
 				inline auto& get() const { assert(valid); return e; }
+
+				template<typename T>
+				inline void add_bit()
+				{
+					const auto prebitset = get().bitset;
+					constexpr auto id = Config::template metaBit<T>(); 
+					e.bitset[id] = true;
+					manager.enter_groups(e, prebitset);
+				}
+
+				template<typename T>
+				inline void erase_bit()
+				{
+					const auto prebitset = get().bitset;
+					e.bitset[Config::template metaBit<T>()] = false;
+					manager.leave_groups(e, prebitset);
+				}
 			public:
 				~EntityProxy() 
 				{ 
-					manager.update_groups(e, prebitset);
-					valid = false; 
+#if NDEBUG
+#else
+					valid = false;
+#endif
 				}
 				EntityProxy(EntityProxy&) = delete;
 				EntityProxy() = delete;
 				EntityProxy(EntityProxy&&) = delete;
 				EntityProxy& operator = (const EntityProxy&) = delete;
 
-				auto& move(EntityProxy& other)
-				{
-					std::swap(get().bitset, other.get().bitset);
-					std::swap(get().dataIndex, other.get().dataIndex);
-					other.get().alive = false;
-					other.valid = false;
-					return *this;
-				}
 
 				auto is_alive() const noexcept { return get().alive; }
 
@@ -307,7 +334,11 @@ namespace eecs {
 				{ 
 					manager.broadcast(EntityDyingEvent{ get().localID });
 					get().alive = false; 
-					valid = false; 
+					manager.leave_groups(e, get().bitset);
+#if NDEBUG
+#else
+					valid = false;
+#endif
 				}
 
 				template <typename T>
@@ -319,14 +350,14 @@ namespace eecs {
 				template <typename T>
 				auto& add_tag() noexcept {
 					static_assert(Config::template isTag<T>(), "Tag expect");
-					get().bitset[Config::template metaBit<T>()] = true;
+					add_bit<T>();
 					return *this;
 				}
 
 				template <typename T>
 				auto& erase_tag() noexcept {
 					static_assert(Config::template isTag<T>(), "Tag expect");
-					get().bitset[Config::template metaBit<T>()] = false;
+					erase_bit<T>();
 					return *this;
 				}
 
@@ -341,7 +372,14 @@ namespace eecs {
 					static_assert(Config::template isComponent<T>(), "Component expect");
 
 					auto& e(get());
-					e.bitset[Config::template metaBit<T>()] = true;
+
+					
+					constexpr auto id = Config::template metaBit<T>();
+					if (!e.bitset[id])
+					{
+						add_bit<T>();
+						manager.broadcast(EntityUpdateEvent{ e.localID,id,EntityUpdateEvent::add });
+					}
 
 					auto& c(manager.components.template get_component<T>(e.dataIndex));
 					new(&c) T{ MPL_FWD(mXs)... };
@@ -353,14 +391,15 @@ namespace eecs {
 				auto& get_component() const  noexcept {
 					static_assert(Config::template isComponent<T>(), "Component expect");
 					assert(has_component<T>());
-
 					return manager.components.template get_component<T>(get().dataIndex);
 				}
 
 				template <typename T>
 				auto& erase_component() noexcept {
 					static_assert(Config::template isComponent<T>(), "Component expect");
-					get().bitset[Config::template metaBit<T>()] = false;
+					erase_bit<T>();
+					constexpr auto id = Config::template metaBit<T>();
+					manager.broadcast(EntityUpdateEvent{ get().localID,id,EntityUpdateEvent::erase });
 					return *this;
 				}
 
@@ -372,6 +411,18 @@ namespace eecs {
 				inline const auto& get_bitset() const noexcept
 				{
 					return get().bitset;
+				}
+
+				inline void set_bitset(const Bitset& s) noexcept
+				{
+					if (get().bitset != s)
+					{
+						const auto prebitset = get().bitset;
+						get().bitset = s;
+						if((s|prebitset) == s)
+							manager.leave_groups(e, prebitset);
+						else manager.enter_groups(e, prebitset);
+					}
 				}
 
 				template<typename ...Ts>
@@ -398,7 +449,7 @@ namespace eecs {
 
 			EntityManager() 
 			{ 
-				MPL::forTypes<Config::ComponentList>([](auto t)
+				MPL::forTypes<typename Config::ComponentList>([](auto t)
 				{
 					using type = typename decltype(t)::type;
 					static_assert(std::is_pod_v<type>, "Component should be POD");
@@ -429,8 +480,8 @@ namespace eecs {
 				
 				for (size_t i = 0; i < size; i++)
 				{
-					Entity& e = entities[i];
-					mFunction(EntityProxy{ i,*this });
+					EntityProxy proxy{ i,*this };
+					mFunction(proxy);
 				}
 			}
 
@@ -440,7 +491,7 @@ namespace eecs {
 			inline void create_group()
 			{
 				static_assert (MPL::size<T>() >= 1, "Signature should not be empty");
-				groups.push_back(std::make_pair(Config::SignatureBitsets::getBits<T>(), std::vector<size_t>{}));
+				groups.push_back(std::make_pair(Config::SignatureBitsets::template getBits<T>(), std::vector<size_t>{}));
 				auto& bitset = groups[groupsize].first;
 				auto& group = groups[groupsize].second;
 				for (int i = 0; i < size; i++)
@@ -470,7 +521,7 @@ namespace eecs {
 				if (bestGroup == -1)
 				{
 					/*Heuristic optimization*/
-					if (!Optimized && FMLocalCounter > size * 3 && ((float)FMLocalCounter) / FMCounter > 0.3)
+					if (!Optimized && FMLocalCounter > size * 10 && ((float)FMLocalCounter) / FMCounter > 0.3)
 					{
 						Optimized = true;
 						create_group<T>();
@@ -480,8 +531,11 @@ namespace eecs {
 					{
 						FMLocalCounter++; FMCounter++;
 						Entity& e = entities[i];
-						if (Config::SignatureBitsets::match<T>(e.bitset))
-							ExactComponentHelper::call(EntityProxy{ i, *this }, mFunction);
+						if (Config::SignatureBitsets::template match<T>(e.bitset))
+						{
+							EntityProxy proxy{ i, *this };
+							ExactComponentHelper::call(proxy, mFunction);
+						}
 					}
 				}
 				else
@@ -490,13 +544,13 @@ namespace eecs {
 					auto& group = pair.second;
 					auto& key = pair.first;
 					auto size = group.size();
-					if (Config::SignatureBitsets::getBits<T>() == key)
+					if (Config::SignatureBitsets::template getBits<T>() == key)
 					{
 						for (size_t i = 0; i < size; i++)
 						{
 							size_t id = localMap[group[i]];
-							Entity& e = entities[i];
-							ExactComponentHelper::call(EntityProxy{ id, *this }, mFunction);
+							EntityProxy proxy{ id, *this };
+							ExactComponentHelper::call(proxy, mFunction);
 						}
 					}
 					else //oh we still need match
@@ -505,8 +559,11 @@ namespace eecs {
 						{
 							size_t id = localMap[group[i]];
 							Entity& e = entities[i];
-							if (Config::SignatureBitsets::match<T>(e.bitset))
-								ExactComponentHelper::call(EntityProxy{ id, *this }, mFunction);
+							if (Config::SignatureBitsets::template match<T>(e.bitset))
+							{
+								EntityProxy proxy{ id, *this };
+								ExactComponentHelper::call(proxy, mFunction);
+							}
 						}
 					}
 				}
@@ -533,7 +590,8 @@ namespace eecs {
 			void for_local(size_t id, F&& f)
 			{
 				size_t i = localMap[id];
-				f(EntityProxy{ i,*this });
+				EntityProxy proxy{ i,*this };
+				f(proxy);
 			}
 		private:
 
@@ -586,7 +644,7 @@ namespace eecs {
 			struct ExpandCallHelper {
 				template <typename TF>
 				static void call(EntityProxy& handle, TF&& mFunction) {
-					mFunction(handle , handle.get_component<Ts>()...);
+					mFunction(handle , handle.template get_component<Ts>()...);
 				}
 			};
 
@@ -605,7 +663,7 @@ namespace eecs {
 					auto& pair = groups[i];
 					auto& bitset = pair.first;
 					auto size = pair.second.size();
-					constexpr auto sbitset = Config::SignatureBitsets::getBits<T>();
+					constexpr auto sbitset = Config::SignatureBitsets::template getBits<T>();
 					auto isInGroup = ((bitset&sbitset) == bitset);
 					if (isInGroup)
 					{
@@ -616,36 +674,35 @@ namespace eecs {
 				return id;
 			}
 
-			inline void update_groups(const Entity& e,const Bitset& prebitset)
+			inline void enter_groups(const Entity& e,const Bitset& prebitset)
 			{
-				if (e.alive)
+				for (size_t i = 0; i < groupsize; i++)
 				{
-					if (prebitset == e.bitset) return;
-					for (size_t i = 0; i < groupsize; i++)
+					auto& bitset = groups[i].first;
+					auto& group = groups[i].second;
+					auto isEnteringGroup = ((bitset&e.bitset) == bitset);
+					auto wasInGroup = ((bitset&prebitset) == bitset);
+					if (!wasInGroup && isEnteringGroup)
 					{
-						auto& bitset = groups[i].first;
-						auto& group = groups[i].second;
-						auto isEnteringGroup = ((bitset&e.bitset) == bitset);
-						auto isInGroup = ((bitset&prebitset) == bitset);
-						if (!isInGroup && isEnteringGroup)
-						{
-							group.push_back(e.localID);
-						}
+						group.push_back(e.localID);
 					}
 				}
-				else
+			}
+
+			inline void leave_groups(const Entity& e, const Bitset& prebitset)
+			{
+				for (size_t i = 0; i < groupsize; i++)
 				{
-					for (size_t i = 0; i < groupsize; i++)
+					auto& bitset = groups[i].first;
+					auto& group = groups[i].second;
+					auto isLeavingGroup = !e.alive || ((bitset&e.bitset) != bitset);
+					auto wasInGroup = ((bitset&prebitset) == bitset);
+					if (isLeavingGroup&&wasInGroup)
 					{
-						auto& bitset = groups[i].first;
-						auto& group = groups[i].second;
-						auto isLeavingGroup = ((bitset&prebitset) == bitset);
-						if (isLeavingGroup)
-						{
-							group.erase(std::find(group.begin(), group.end(), e.localID));
-						}
+						group.erase(std::find(group.begin(), group.end(), e.localID));
 					}
 				}
+
 			}
 
 			void refresh() noexcept {
@@ -715,16 +772,15 @@ namespace eecs {
 		size_t EntityManager<TConfig, TEventList>::FMCounter = 0;
 	}
 
-	template<typename T,typename TWorld>
+	template<typename TWorld>
 	class System
 	{
-		struct vtable { virtual ~vtable() {} };
+		
 	protected:
 		TWorld &world;
-	public:
+		friend TWorld;
 		System() : world(*TWorld::pWorld)
-		{
-			static_assert(sizeof(T) == sizeof(System) + (std::has_virtual_destructor_v<T> ? sizeof(vtable) : 0u), "System should not have any data");
+		{	
 		}
 	};
 
@@ -736,19 +792,33 @@ namespace eecs {
 			TEventList
 		>
 	{
-		MPL::Rename<std::tuple, typename TSingletonList> singletons;
+		MPL::Rename<std::tuple, TSingletonList> singletons;
 		using EntityManager = Impl::EntityManager
 		<
 			Impl::Config<TComponentList, TTagList>,
 			TEventList
 		>;
+		struct vtable { virtual ~vtable() {} };
 	public:
 		static World *pWorld;
-		using EntityProxy = EntityManager::EntityProxy;
+		using EntityProxy = typename EntityManager::EntityProxy;
+
 		template<typename T>
-		auto& getSingleton()
+		auto& get_singleton()
 		{
 			return std::get<T>(singletons);
+		}
+
+		template<typename ...Ts>
+		void run_with()
+		{
+			eecs::MPL::forTypes<MPL::TypeList<Ts...>>([&](auto v)
+			{
+				using t = typename decltype(v)::type;
+				static_assert(sizeof(t) == sizeof(System<World>) + (std::has_virtual_destructor_v<t> ? sizeof(vtable) : 0u), "System should not have any data");
+			});
+			pWorld = this;
+			std::initializer_list<int> _ = { (Ts{},0)... };
 		}
 
 		World() { pWorld = this; }
@@ -757,9 +827,6 @@ namespace eecs {
 
 	template<typename C,typename T,typename E,typename S>
 	World<C, T, E, S> *World<C, T, E, S>::pWorld;
-
-	
-
 }
 
 #endif /* ecs_ecs_hpp */

@@ -3,9 +3,12 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2005
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Gluttonous Snake", "Gluttonous Snake\Gluttonous Snake.vcxproj", "{B358C3D7-238A-4091-A2AB-6A5722476AE0}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ECSE", "Gluttonous Snake\Gluttonous Snake.vcxproj", "{B358C3D7-238A-4091-A2AB-6A5722476AE0}"
 EndProject
 Global
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
