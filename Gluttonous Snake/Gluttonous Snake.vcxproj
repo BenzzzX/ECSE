@@ -162,7 +162,7 @@
   <ItemGroup>
     <ClInclude Include="benchmark.h" />
     <ClInclude Include="Cache.h" />
-    <ClInclude Include="ECS\eecs.hpp" />
+    <ClInclude Include="ECS\EEC.hpp" />
     <ClInclude Include="EntityPlus\container.h" />
     <ClInclude Include="EntityPlus\entity.h" />
     <ClInclude Include="EntityPlus\event.h" />

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace eecs
+namespace EEC
 {
     namespace MPL
     {

@@ -21,16 +21,16 @@ struct CFoodSpawner {
 };
 
 using Components =
-    eecs::ComponentList<CPosition, CVelocity, CAppearance, CCollision,
+    EEC::ComponentList<CPosition, CVelocity, CAppearance, CCollision,
                         CLifeTime, CSnake, CInput, CFoodSpawner, CUniqueID>;
-using Tags = eecs::TagList 
+using Tags = EEC::TagList 
     <struct TPlayer, struct TFood, struct TSnakeBody, struct TFood>;
-using Events = eecs::EventList<TickEvent, CollisionEvent, KeyEvent, RewindEvent,
+using Events = EEC::EventList<TickEvent, CollisionEvent, KeyEvent, RewindEvent,
                                CacheEvent>;
-using Singletons = eecs::SingletonList
-    <SceneData, Cache, UniqueData>;
+using Singletons = EEC::SingletonList
+    <SceneData, Cache, UniqueData, ScreenBuffer>;
 
-using World = eecs::World
+using World = EEC::World
     <Components, Tags, Events, Singletons>;
 
 template <typename... Ts> using EntityTemplate = World::EntityTemplate<Ts...>;

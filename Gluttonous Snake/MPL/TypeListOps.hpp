@@ -9,7 +9,7 @@
 #include "./Concat.hpp"
 #include "./Map.hpp"
 
-namespace eecs
+namespace EEC
 {
     namespace MPL
     {

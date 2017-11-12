@@ -36,11 +36,11 @@ namespace ImpureUtil {
   /*系统*/
 namespace Systems {
 	/*控制系统，根据玩家输入更新速度*/
-	class ControllSystem : System<World> {
-		using SPlayer = eecs::Signature<CVelocity, CInput>;
-
+	class ControllSystem {
+		using SPlayer = EEC::Signature<CVelocity, CInput>;
+		World& world;
 	public:
-		ControllSystem() {
+		ControllSystem(World& world):world(world) {
 			world.subscribe<KeyEvent>(*this);
 			world.subscribe<TickEvent>(*this);
 		}
@@ -83,8 +83,8 @@ namespace Systems {
 	};
 
 	/*蛇系统，负责管理蛇身，并处理蛇的碰撞事件*/
-	class SnakeSystem : System<World> {
-		using SSnake = eecs::Signature<CPosition, CVelocity, CSnake>;
+	class SnakeSystem {
+		using SSnake = EEC::Signature<CPosition, CVelocity, CSnake>;
 		inline static void Tick(World &world) {
 			world.for_matching<SSnake>(
 				[&world](auto &, auto &pos, auto &, auto &snake) {
@@ -98,7 +98,7 @@ namespace Systems {
 				});
 			});
 		}
-
+		World& world;
 	public:
 		void receive(const TickEvent &event) { Tick(world); }
 
@@ -119,15 +119,15 @@ namespace Systems {
 			});
 		}
 
-		SnakeSystem() {
+		SnakeSystem(World& world):world(world) {
 			world.subscribe<TickEvent>(*this);
 			world.subscribe<CollisionEvent>(*this);
 		}
 	};
 
 	/*食物系统，生成食物*/
-	class FoodSystem : System<World> {
-		using SFoodSpawner = eecs::Signature<CFoodSpawner>;
+	class FoodSystem {
+		using SFoodSpawner = EEC::Signature<CFoodSpawner>;
 		static void generate_food(World &world, size_t rand) {
 			std::vector<CPosition> available;
 			auto &scene = world.get_singleton<SceneData>();
@@ -140,7 +140,7 @@ namespace Systems {
 			const size_t randIndex = rand % available.size();
 			ImpureUtil::construct_food(world, available[randIndex]);
 		}
-
+		World& world;
 	public:
 		void receive(const TickEvent &event) {
 			world.for_matching<SFoodSpawner>([this](auto &, auto &spawner) {
@@ -152,14 +152,14 @@ namespace Systems {
 			});
 		}
 
-		FoodSystem() { world.subscribe<TickEvent>(*this); }
+		FoodSystem(World& world):world(world) { world.subscribe<TickEvent>(*this); }
 	};
 
 } // namespace Systems
 
   /*构造匿名系统*/
-#define Install(name) name ___##name
-#define InstallGeneral(name) name<World> ___##name
+#define Install(name) name ___##name { world }
+#define InstallGeneral(name) name<World> ___##name { world }
 
 void runSnake() {
 
@@ -172,9 +172,15 @@ void runSnake() {
 	world.apply_changes();
 
 	using namespace Systems;
-	world.run_with<ControllSystem, SnakeSystem, PhysicalMovementSystem<World>,
-		LifeSystem<World>, FoodSystem, CacheSystem<World>,
-		RenderSystem<World>, InputSystem<World>, TickSystem<World>>();
+	Install(ControllSystem);
+	Install(SnakeSystem);
+	InstallGeneral(PhysicalMovementSystem);
+	InstallGeneral(LifeSystem);
+	Install(FoodSystem);
+	InstallGeneral(CacheSystem);
+	InstallGeneral(RenderSystem);
+	Install(InputSystem);
+	Install(TickSystem);
 }
 
 struct test
@@ -186,7 +192,7 @@ void serialize_test() {
 	World world;
 	BYTE data[100];
 	BYTE *pdata = data;
-	Systems::SerializeSystem<World> _;
+	Systems::SerializeSystem<World> _{ world };
 	auto id = world.new_entity();
 	id = world.new_entity();
 	for(int i=0;i<2;i++)
@@ -213,49 +219,13 @@ void serialize_test() {
 	});
 }
 
-template<typename T>
-void show_member()
-{
-	using namespace eecs::MPL;
-	std::cout << "class type:\n" << typeid(T).name() << "\nmember type:" << '\n';
-	forTypes<to_member_list_t<T>>([](auto v)
-	{
-		using type = typename decltype(v)::type;
-		std::cout << typeid(type).name() << '\n';
-	});
-}
-
-void to_tuple_test()
-{
-	{
-		struct s
-		{
-			struct {} c;
-			int a;
-			char b;
-		};
-		show_member<s>();
-		std::cout << '\n';
-	}
-	{
-		struct s
-		{
-			size_t a;
-			float b;
-		};
-		show_member<s>();
-		std::cout << '\n';
-	}
-	show_member<CPosition>();
-}
-
 
 int main() {
     runSnake();
 	//benchmark::runCompare(100000, 1000000, 1000);
     //serialize_test();
 	//to_tuple_test();
-	using namespace eecs::MPL;
+	using namespace EEC::MPL;
 	test b;
 	auto a = to_tuple(b);
 	return 0;

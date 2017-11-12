@@ -1,5 +1,5 @@
 #pragma once
-#include "ECS\eecs.hpp"
+#include "ECS\EEC.hpp"
 #include <iostream>
 #include <thread>
 /*benchmark ���ܲ��ԣ��Ƚ϶���:EntityPlus*/
@@ -23,11 +23,11 @@ public:
 };
 
 void runTest(int entityCount, int iterationCount, int tagProb) {
-  using World = eecs::World<eecs::ComponentList<int, float>,
-                            eecs::TagList<struct tag>, eecs::EventList<int>,
-                            eecs::SingletonList<>>;
+  using World = EEC::World<EEC::ComponentList<int, float>,
+                            EEC::TagList<struct tag>, EEC::EventList<int>,
+                            EEC::SingletonList<>>;
   World world;                                      
-  using SomeSignature = eecs::Signature<tag, int>; 
+  using SomeSignature = EEC::Signature<tag, int>; 
   ::std::cout << "eecs\n";
   {
     Timer timer("Add entities: ");

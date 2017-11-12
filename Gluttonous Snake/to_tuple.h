@@ -1,9 +1,9 @@
 #pragma once
-#include "ECS\eecs.hpp"
+#include "ECS\EEC.hpp"
 #include<tuple>
 
 
-namespace eecs::MPL
+namespace EEC::MPL
 {
 
 	template <class T, class... TArgs> decltype(void(T{ std::declval<TArgs>()... }), std::true_type{}) test_is_braces_constructible(int);
@@ -294,7 +294,7 @@ namespace eecs::MPL
 	struct resolve
 	{
 		using tuple = decltype(to_tuple(std::declval<T>()));
-		using typelist = eecs::MPL::Rename<eecs::MPL::TypeList, tuple>;
+		using typelist = EEC::MPL::Rename<EEC::MPL::TypeList, tuple>;
 	};
 
 	template<typename T>

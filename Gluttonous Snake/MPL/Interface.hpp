@@ -15,7 +15,7 @@
 #include "./Unique.hpp"
 
 
-namespace eecs
+namespace EEC
 {
     namespace MPL
     {

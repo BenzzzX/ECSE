@@ -1,5 +1,5 @@
 #pragma once
-#include "ECS\eecs.hpp"
+#include "ECS\EEC.hpp"
 #include <Windows.h>
 
 struct KeyEvent {
@@ -16,14 +16,14 @@ namespace Util
 }
 
 namespace Systems {
-	template <typename World> using System = eecs::System<World>;
 
-	template <typename World> class InputSystem : System<World> {
-		static std::thread thread;
+	class InputSystem {
+	std::thread thread;
 
 	public:
-		InputSystem() {
-			thread = std::thread([this]() {
+		template<typename World>
+		InputSystem(World& world) {
+			thread = std::thread([&]() {
 				HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
 				INPUT_RECORD records[128];
 				DWORD nReads;
@@ -41,6 +41,4 @@ namespace Systems {
 		}
 		~InputSystem() { thread.join(); }
 	};
-
-	template <typename World> std::thread InputSystem<World>::thread;
 }

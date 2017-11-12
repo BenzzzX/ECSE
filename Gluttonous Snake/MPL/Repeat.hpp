@@ -4,7 +4,7 @@
 #include "./TypeList.hpp"
 #include "./TypeListOps.hpp"
 
-namespace eecs
+namespace EEC
 {
     namespace MPL
     {

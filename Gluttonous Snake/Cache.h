@@ -1,5 +1,5 @@
 #pragma once
-#include "ECS\eecs.hpp"
+#include "ECS\EEC.hpp"
 #include "Tick.h"
 
 class Cache {
@@ -64,14 +64,14 @@ public:
 namespace Util 
 {
 	template <typename C, typename T, typename E, typename S>
-	void save(eecs::World<C, T, E, S> &world,
-		typename eecs::World<C, T, E, S>::EntityProxy &proxy, BYTE *&data) {
-		using World = eecs::World<C, T, E, S>;
+	void save(EEC::World<C, T, E, S> &world,
+		typename EEC::World<C, T, E, S>::EntityProxy &proxy, BYTE *&data) {
+		using World = EEC::World<C, T, E, S>;
 		using Config = typename World::Config;
 		const auto &bitset = proxy.get_bitset();
 		memcpy(data, &bitset, sizeof(typename Config::Bitset));
 		data += sizeof(typename Config::Bitset);
-		eecs::MPL::forTypes<C>([&](auto v) {
+		EEC::MPL::forTypes<C>([&](auto v) {
 			using t = typename decltype(v)::type;
 			constexpr auto id = Config::template metaBit<t>();
 			if (bitset[id]) {
@@ -86,17 +86,17 @@ namespace Util
 namespace ImpureUtil
 {
 	template <typename C, typename T, typename E, typename S>
-	void restore(eecs::World<C, T, E, S> &world,
-		typename eecs::World<C, T, E, S>::EntityProxy &proxy,
+	void restore(EEC::World<C, T, E, S> &world,
+		typename EEC::World<C, T, E, S>::EntityProxy &proxy,
 		BYTE *&data) {
-		using World = eecs::World<C, T, E, S>;
+		using World = EEC::World<C, T, E, S>;
 		using Config = typename World::Config;
 		using Bitset = typename Config::Bitset;
 		Bitset bitset;
 		memcpy(&bitset, data, sizeof(Bitset));
 		proxy.set_bitset(bitset);
 		data += sizeof(Bitset);
-		eecs::MPL::forTypes<C>([&](auto v) {
+		EEC::MPL::forTypes<C>([&](auto v) {
 			using t = typename decltype(v)::type;
 			constexpr auto id = Config::template metaBit<t>();
 			if (bitset[id]) {
@@ -112,9 +112,10 @@ namespace ImpureUtil
 
 namespace Systems
 {
-	template <typename World> using System = eecs::System<World>;
 
-	template <typename World> class CacheSystem : System<World> {
+	template <typename World> class CacheSystem {
+
+		World& world;
 
 		static void cache_world(World &world) {
 			auto &worldcache = world.template get_singleton<Cache>();
@@ -153,7 +154,7 @@ namespace Systems
 			return true;
 		}
 	public:
-		CacheSystem() {
+		CacheSystem(World& world) :world(world) {
 			world.template subscribe<RewindEvent>(*this);
 			world.template subscribe<CacheEvent>(*this);
 		}

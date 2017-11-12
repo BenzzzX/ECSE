@@ -4,7 +4,7 @@
 #include "./TypeList.hpp"
 #include "./Concat.hpp"
 
-namespace eecs
+namespace EEC
 {
     namespace MPL
     {

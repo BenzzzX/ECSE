@@ -75,9 +75,6 @@
     <ClInclude Include="MPL\Unique.hpp">
       <Filter>头文件\MPL</Filter>
     </ClInclude>
-    <ClInclude Include="ECS\eecs.hpp">
-      <Filter>头文件\ECS</Filter>
-    </ClInclude>
     <ClInclude Include="EntityPlus\container.h">
       <Filter>头文件\EntityPlus</Filter>
     </ClInclude>
@@ -128,6 +125,9 @@
     </ClInclude>
     <ClInclude Include="UtilSystem.h">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ECS\EEC.hpp">
+      <Filter>头文件\ECS</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

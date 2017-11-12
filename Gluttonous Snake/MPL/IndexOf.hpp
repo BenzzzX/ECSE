@@ -3,7 +3,7 @@
 #include <type_traits>
 #include "./TypeList.hpp"
 
-namespace eecs
+namespace EEC
 {
     namespace MPL
     {

@@ -20,7 +20,7 @@
 
 #define Property(exp) static constexpr auto exp
 
-namespace eecs {
+namespace EEC {
 	
 	
 	typedef std::size_t DataIndex;
@@ -773,18 +773,6 @@ namespace eecs {
 		size_t EntityManager<TConfig, TEventList>::FMCounter = 0;
 	}
 
-	template<typename TWorld>
-	class System
-	{
-		
-	protected:
-		TWorld &world;
-		friend TWorld;
-		System() : world(*TWorld::pWorld)
-		{	
-		}
-	};
-
 	template <typename TComponentList, typename TTagList, typename TEventList, typename TSingletonList>
 	class World : 
 		public Impl::EntityManager
@@ -801,7 +789,6 @@ namespace eecs {
 		>;
 		struct vtable { virtual ~vtable() {} };
 	public:
-		static World *pWorld;
 		using EntityProxy = typename EntityManager::EntityProxy;
 
 		template<typename T>
@@ -809,25 +796,7 @@ namespace eecs {
 		{
 			return std::get<T>(singletons);
 		}
-
-		template<typename ...Ts>
-		void run_with()
-		{
-			eecs::MPL::forTypes<MPL::TypeList<Ts...>>([&](auto v)
-			{
-				using t = typename decltype(v)::type;
-				static_assert(sizeof(t) == sizeof(System<World>) + (std::has_virtual_destructor_v<t> ? sizeof(vtable) : 0u), "System should not have any data");
-			});
-			pWorld = this;
-			std::initializer_list<int> _ = { (Ts{},0)... };
-		}
-
-		World() { pWorld = this; }
-		~World() { pWorld = nullptr; }
 	};
-
-	template<typename C,typename T,typename E,typename S>
-	World<C, T, E, S> *World<C, T, E, S>::pWorld;
 }
 
 #endif /* ecs_ecs_hpp */

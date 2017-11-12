@@ -1,5 +1,5 @@
 #pragma once
-#include "ECS\eecs.hpp"
+#include "ECS\EEC.hpp"
 #include <Windows.h>
 #include "to_tuple.h"
 
@@ -53,12 +53,12 @@ struct GetSerializeStrategy<T, decltype(T::serializeStrategy, void())> {
 namespace Util
 {
 	template <typename C, typename T, typename E, typename S, typename V>
-	auto wrap_ref(eecs::World<C, T, E, S> &world, V& v)
+	auto wrap_ref(EEC::World<C, T, E, S> &world, V& v)
 	{
-		static_assert(eecs::MPL::Contains<UniqueData, S>{},
+		static_assert(EEC::MPL::Contains<UniqueData, S>{},
 			"translate_id only enable when UniqueMap is available");
 
-		using namespace eecs::MPL;
+		using namespace EEC::MPL;
 
 		using membertypelist = to_member_list_t<V>;
 		using targettypelist = typename replace_all<EntityID, UniqueID, membertypelist>::type;
@@ -93,12 +93,12 @@ namespace Util
 	}
 
 	template <typename C, typename T, typename E, typename S>
-	void serialize(eecs::World<C, T, E, S> &world,
-		typename eecs::World<C, T, E, S>::EntityProxy &proxy,
+	void serialize(EEC::World<C, T, E, S> &world,
+		typename EEC::World<C, T, E, S>::EntityProxy &proxy,
 		BYTE *&data) {
-		static_assert(eecs::MPL::Contains<CUniqueID, C>{},
+		static_assert(EEC::MPL::Contains<CUniqueID, C>{},
 			"serialize only enable when CUniqueID is available");
-		static_assert(eecs::MPL::Contains<UniqueData, S>{},
+		static_assert(EEC::MPL::Contains<UniqueData, S>{},
 			"serialize only enable when UniqueMap is available");
 		auto &uM = world.template get_singleton<UniqueData>();
 		assert(uM.enabled);
@@ -110,7 +110,7 @@ namespace Util
 			proxy.template add_component<CUniqueID>(newID);
 			uniqueMap.insert(std::make_pair(newID, proxy.get_local_id()));
 		}
-		using World = eecs::World<C, T, E, S>;
+		using World = EEC::World<C, T, E, S>;
 		using Config = typename World::Config;
 		using Bitset = typename Config::Bitset;
 
@@ -138,7 +138,7 @@ namespace Util
 		}
 		size_t cacheNeedSize = sizeof(Bitset);
 
-		eecs::MPL::forTypes<C>([&](auto v) {
+		EEC::MPL::forTypes<C>([&](auto v) {
 			using t = typename decltype(v)::type;
 			constexpr auto id = Config::template metaBit<t>();
 			if (bitset[id]) {
@@ -182,7 +182,7 @@ namespace Util
 		memcpy(cacheData, &bitset, sizeof(Bitset));
 		cacheData += sizeof(Bitset);
 
-		eecs::MPL::forTypes<C>([&](auto v) {
+		EEC::MPL::forTypes<C>([&](auto v) {
 			using t = typename decltype(v)::type;
 			constexpr auto id = Config::template metaBit<t>();
 			if (dirty[id]) {
@@ -211,15 +211,15 @@ namespace Util
 namespace ImpureUtil
 {
 	template <typename C, typename T, typename E, typename S, typename ...V>
-	auto unwrap_ref(eecs::World<C, T, E, S> &world, const std::tuple<V...>& v)
+	auto unwrap_ref(EEC::World<C, T, E, S> &world, const std::tuple<V...>& v)
 	{
-		static_assert(eecs::MPL::Contains<UniqueData, S>{},
+		static_assert(EEC::MPL::Contains<UniqueData, S>{},
 			"translate_id only enable when UniqueMap is available");
 		auto &uM = world.template get_singleton<UniqueData>();
 		assert(uM.enabled);
 		auto &uniqueMap = uM.map;
 
-		using namespace eecs::MPL;
+		using namespace EEC::MPL;
 		using membertypelist = TypeList<V...>;
 		using targettypelist = typename replace_all<UniqueID, EntityID, membertypelist>::type;
 		using targettype = Rename<std::tuple, targettypelist>;
@@ -258,10 +258,10 @@ namespace ImpureUtil
 	}
 
 	template <typename C, typename T, typename E, typename S>
-	void unserialize(eecs::World<C, T, E, S> &world, BYTE *&data) {
-		static_assert(eecs::MPL::Contains<CUniqueID, C>{},
+	void unserialize(EEC::World<C, T, E, S> &world, BYTE *&data) {
+		static_assert(EEC::MPL::Contains<CUniqueID, C>{},
 			"serialize only enable when CUniqueID is available");
-		static_assert(eecs::MPL::Contains<UniqueData, S>{},
+		static_assert(EEC::MPL::Contains<UniqueData, S>{},
 			"serialize only enable when UniqueMap is available");
 		auto &uM = world.template get_singleton<UniqueData>();
 		assert(uM.enabled);
@@ -279,7 +279,7 @@ namespace ImpureUtil
 		}
 		size_t id = uniqueMap[uid.uid];
 		world.for_local(id, [&](auto &proxy) {
-			using World = eecs::World<C, T, E, S>;
+			using World = EEC::World<C, T, E, S>;
 			using Config = typename World::Config;
 			using Bitset = typename Config::Bitset;
 			proxy.template add_component<CUniqueID>(uid);
@@ -289,7 +289,7 @@ namespace ImpureUtil
 			proxy.set_bitset(bitset);
 			memcpy(&dirty, data, sizeof(Bitset));
 			data += sizeof(Bitset);
-			eecs::MPL::forTypes<C>([&](auto v) {
+			EEC::MPL::forTypes<C>([&](auto v) {
 				using t = typename decltype(v)::type;
 				constexpr auto id = Config::template metaBit<t>();
 				if (dirty[id]) {
@@ -298,7 +298,7 @@ namespace ImpureUtil
 					wraped_type wrappedc;
 					memcpy(&wrappedc, data, sizeof(wrappedc));
 					data += sizeof(wrappedc);
-					c = eecs::MPL::to_struct<t>(unwrap_ref(world, std::move(wrappedc)));
+					c = EEC::MPL::to_struct<t>(unwrap_ref(world, std::move(wrappedc)));
 					proxy.template add_component<t>(c);
 				}
 			});
@@ -308,11 +308,11 @@ namespace ImpureUtil
 
 namespace Systems
 {
-	template <typename World> using System = eecs::System<World>;
-
-	template <typename World> class SerializeSystem : public System<World> {
+	template <typename World> 
+	class SerializeSystem {
+		World& world;
 	public:
-		void receive(const eecs::EntityDyingEvent &event) {
+		void receive(const EEC::EntityDyingEvent &event) {
 			auto &uM = world.template get_singleton<UniqueData>();
 			assert(uM.enabled);
 			auto &uniqueMap = uM.map;
@@ -324,10 +324,10 @@ namespace Systems
 			});
 		}
 
-		SerializeSystem() {
+		SerializeSystem(World& world):world(world) {
 			auto &uM = world.template get_singleton<UniqueData>();
 			assert(uM.enabled = true);
-			world.template subscribe<typename eecs::EntityDyingEvent>(*this);
+			world.template subscribe<typename EEC::EntityDyingEvent>(*this);
 		}
 	};
 

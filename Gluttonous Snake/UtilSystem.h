@@ -52,11 +52,12 @@ namespace Util {
 }
 
 namespace Systems {
-	template <typename World> using System = eecs::System<World>;
 
-	template <typename World> class PhysicalMovementSystem : System<World> {
-		using SMovement = eecs::Signature<CPosition, CVelocity>;
-		using SCollision = eecs::Signature<CPosition, CCollision>;
+	template <typename World> 
+	class PhysicalMovementSystem {
+		using SMovement = EEC::Signature<CPosition, CVelocity>;
+		using SCollision = EEC::Signature<CPosition, CCollision>;
+		World& world;
 
 		static auto &position_trace(World &world, size_t x, size_t y) {
 			auto &scenedata = world.template get_singleton<SceneData>();
@@ -108,14 +109,15 @@ namespace Systems {
 
 	public:
 		void receive(const TickEvent &event) { Tick(world); }
-		PhysicalMovementSystem() {
+		PhysicalMovementSystem(World& world):world(world) {
 			world.template subscribe<TickEvent>(*this);
 			new (&world.template get_singleton<SceneData>()) SceneData(width, height);
 		}
 	};
 	
-	template <typename World> class LifeSystem : System<World> {
-		using SLifeTime = eecs::Signature<CLifeTime>;
+	template <typename World> 
+	class LifeSystem {
+		using SLifeTime = EEC::Signature<CLifeTime>;
 		inline static void Tick(World &world) {
 			world.template for_matching<SLifeTime>([](auto &proxy, auto &life) {
 				if (life.frames == 0)
@@ -123,10 +125,10 @@ namespace Systems {
 				life.frames--;
 			});
 		}
-
+		World& world;
 	public:
 		void receive(const TickEvent &event) { Tick(world); }
-		LifeSystem() { world.template subscribe<TickEvent>(*this); }
+		LifeSystem(World& world):world(world) { world.template subscribe<TickEvent>(*this); }
 	};
 
 } // namespace Systems

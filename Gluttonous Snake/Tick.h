@@ -1,5 +1,5 @@
 #pragma once
-#include "ECS\eecs.hpp"
+#include "ECS\EEC.hpp"
 #include <thread>
 #include <chrono>
 
@@ -18,16 +18,14 @@ struct RewindEvent {
 
 
 namespace Systems {
-	template <typename World> using System = eecs::System<World>;
 
-	template <typename World> class TickSystem : System<World> {
+	class TickSystem {
 		static constexpr size_t framerate = 10u;
-		static std::thread thread;
-
+		std::thread thread;
 	public:
-		TickSystem() {
-
-			thread = std::thread([this]() {
+		template<typename World>
+		TickSystem(World& world) {
+			thread = std::thread([&]() {
 				size_t frame = 0;
 				while (1) {
 					std::this_thread::sleep_for(
@@ -49,6 +47,4 @@ namespace Systems {
 		}
 		~TickSystem() { thread.join(); }
 	};
-
-	template <typename World> std::thread TickSystem<World>::thread;
 }

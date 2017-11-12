@@ -2,7 +2,7 @@
 
 #include <tuple>
 
-namespace eecs {
+namespace EEC {
     namespace Utils {
         namespace Impl {
             template <typename TFunction, typename TTuple, std::size_t... TIndices>

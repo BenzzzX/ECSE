@@ -2,7 +2,7 @@
 
 #include "./Interface.hpp"
 
-namespace eecs
+namespace EEC
 {
     namespace MPL
     {
